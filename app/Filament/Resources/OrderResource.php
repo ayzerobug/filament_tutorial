@@ -41,20 +41,29 @@ class OrderResource extends Resource
                     Forms\Components\Wizard\Step::make('Order Details')->schema([
                         Forms\Components\TextInput::make('number')->default('0R-' . random_int(100000, 9999999))->disabled()->dehydrated()->required(),
                         Forms\Components\Select::make('customer_id')->relationship('customer', 'name')->searchable()->required(),
+                        Forms\Components\TextInput::make('shipping_price')->label("Shipping Cost")->numeric()->dehydrated()->required(),
                         Forms\Components\Select::make('type')->options([
                             'pending' => OrderStatusEnum::PENDING->value,
                             'processing' => OrderStatusEnum::PROCESSING->value,
                             'completed' => OrderStatusEnum::COMPLETED->value,
                             'declined' => OrderStatusEnum::DECLINED->value,
-                        ])->searchable()->required()->columnSpanFull(),
+                        ])->searchable()->required(),
                         Forms\Components\MarkdownEditor::make('notes')->columnSpanFull(),
                     ])->columns(2),
                     Forms\Components\Wizard\Step::make('Order Items')->schema([
                         Forms\Components\Repeater::make('items')->schema([
-                            Forms\Components\Select::make('product_id')->label('Product')->options(Product::query()->pluck('name', 'id')),
-                            Forms\Components\TextInput::make('quantity')->numeric()->default(1)->required(),
+                            Forms\Components\Select::make('product_id')
+                                ->label('Product')
+                                ->options(Product::query()->pluck('name', 'id'))
+                                ->required()
+                                ->reactive()
+                                ->afterStateUpdated(fn ($state, Forms\Set $set) => $set('unit_price', Product::find($state)?->price ?? 0)),
+                            Forms\Components\TextInput::make('quantity')->numeric()->live()->dehydrated()->default(1)->required(),
                             Forms\Components\TextInput::make('unit_price')->label('Unit Price')->disabled()->dehydrated()->numeric()->required(),
-                        ])->columns(3)
+                            Forms\Components\Placeholder::make('total_price')
+                                ->label("Total Price")
+                                ->content(fn ($get) => $get('quantity') * $get('unit_price'))
+                        ])->columns(4)
                     ])
                 ])->columnSpanFull()
             ]);
@@ -67,9 +76,9 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('number')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('customer.name')->searchable()->sortable()->toggleable(),
                 Tables\Columns\TextColumn::make('status')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('total_price')->summarize([
-                    Tables\Columns\Summarizers\Sum::make()->money()
-                ])->searchable()->sortable(),
+                // Tables\Columns\TextColumn::make('total_price')->summarize([
+                //     Tables\Columns\Summarizers\Sum::make()->money()
+                // ])->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('created_at')->label('Order Date')->date()->sortable(),
             ])
             ->filters([

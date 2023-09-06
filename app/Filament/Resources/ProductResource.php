@@ -106,7 +106,12 @@ class ProductResource extends Resource
                     ])->collapsible(),
 
                     Section::make('Associations')->schema([
-                        Select::make('brand_id')->relationship('brand', 'name'),
+                        Select::make('brand_id')
+                            ->relationship('brand', 'name')
+                            ->required(),
+                        Select::make('categories')->relationship('categories', 'name')
+                            ->multiple()
+                            ->required(),
                     ])
                 ])
             ]);
